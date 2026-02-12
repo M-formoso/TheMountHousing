@@ -1,0 +1,48 @@
+# Entornos
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Base de datos
+*.db
+*.sqlite3
+
+# Keys
+*.pem
+*.key
+
+# Alembic
+alembic/versions/*.py
+!alembic/versions/__init__.py
