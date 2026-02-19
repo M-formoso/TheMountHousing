@@ -4,12 +4,8 @@ FROM node:20-alpine as builder
 # Argumentos de construcción - Railway pasa variables de entorno automáticamente
 ARG VITE_API_URL
 
-# Establecer variables de entorno para el build
+# Establecer variable de entorno para Vite (NO poner NODE_ENV=production aquí)
 ENV VITE_API_URL=${VITE_API_URL}
-ENV NODE_ENV=production
-
-# Debug: mostrar la URL configurada
-RUN echo "Building with VITE_API_URL=${VITE_API_URL}"
 
 # Instalar dependencias del sistema si son necesarias
 RUN apk add --no-cache python3 make g++
@@ -20,11 +16,14 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package.json package-lock.json ./
 
-# Instalar todas las dependencias (incluyendo devDependencies para el build)
-RUN npm ci
+# Instalar TODAS las dependencias (dev + prod) - necesario para tsc
+RUN npm ci --include=dev
 
 # Copiar código fuente
 COPY . .
+
+# Debug: mostrar la URL configurada
+RUN echo "Building with VITE_API_URL=${VITE_API_URL}"
 
 # Ejecutar build de producción
 RUN npm run build
