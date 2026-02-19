@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile.prod"
   },
   "deploy": {
-    "startCommand": "python -c \"import os; print('ENV VARS:', [k for k in os.environ.keys() if 'DATA' in k or 'POST' in k or 'PG' in k])\" && alembic upgrade head && gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -",
+    "startCommand": "python -c \"import os; url=os.environ.get('DATABASE_URL',''); print('DB URL prefix:', url[:50] if url else 'EMPTY')\" && timeout 30 alembic upgrade head || echo 'Migration failed or timed out' && gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
