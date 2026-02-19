@@ -24,43 +24,21 @@ def upgrade() -> None:
     categoriaproveedor = postgresql.ENUM('MATERIALES', 'MANO_DE_OBRA', 'SERVICIOS', 'EQUIPAMIENTO', 'OTROS', name='categoriaproveedor', create_type=False)
     categoriaproveedor.create(op.get_bind(), checkfirst=True)
 
+    # Agregar columna categoria con valor por defecto
     op.add_column('proveedores', sa.Column('categoria', sa.Enum('MATERIALES', 'MANO_DE_OBRA', 'SERVICIOS', 'EQUIPAMIENTO', 'OTROS', name='categoriaproveedor', create_type=False), nullable=False, server_default='OTROS'))
-    # Quitar el server_default después de agregar la columna
     op.alter_column('proveedores', 'categoria', server_default=None)
+
+    # Agregar nuevas columnas
     op.add_column('proveedores', sa.Column('calificacion', sa.Integer(), nullable=True))
     op.add_column('proveedores', sa.Column('total_pagado', sa.Numeric(precision=15, scale=2), nullable=True))
     op.add_column('proveedores', sa.Column('total_pendiente', sa.Numeric(precision=15, scale=2), nullable=True))
+
+    # Eliminar columnas que existen en la migración inicial (001)
     op.drop_column('proveedores', 'calificacion_servicio')
     op.drop_column('proveedores', 'calificacion_calidad')
     op.drop_column('proveedores', 'calificacion_general')
     op.drop_column('proveedores', 'tipo')
-    op.drop_column('proveedores', 'volumen_compra_anual')
     op.drop_column('proveedores', 'calificacion_precio')
-    op.alter_column('unidades', 'avance_porcentaje',
-               existing_type=sa.INTEGER(),
-               nullable=False,
-               existing_server_default=sa.text('0'))
-    op.alter_column('unidades', 'descripcion',
-               existing_type=sa.VARCHAR(),
-               type_=sa.Text(),
-               existing_nullable=True)
-    op.alter_column('unidades', 'caracteristicas',
-               existing_type=sa.VARCHAR(),
-               type_=sa.Text(),
-               existing_nullable=True)
-    op.alter_column('unidades', 'habitaciones',
-               existing_type=sa.NUMERIC(precision=5, scale=0),
-               type_=sa.Integer(),
-               existing_nullable=True)
-    op.alter_column('unidades', 'estacionamientos',
-               existing_type=sa.NUMERIC(precision=5, scale=0),
-               type_=sa.Integer(),
-               existing_nullable=True)
-    op.alter_column('unidades', 'notas',
-               existing_type=sa.VARCHAR(),
-               type_=sa.Text(),
-               existing_nullable=True)
-    op.create_foreign_key(None, 'unidades', 'usuarios', ['usuario_id'], ['id'])
     # ### end Alembic commands ###
 
 
