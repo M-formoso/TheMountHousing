@@ -40,6 +40,9 @@ class UsuarioUpdate(BaseModel):
     apellido_paterno: Optional[str] = None
     apellido_materno: Optional[str] = None
     telefono: Optional[str] = None
+    rol: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
 
 
 class ChangePasswordRequest(BaseModel):

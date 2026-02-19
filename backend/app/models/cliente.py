@@ -7,7 +7,7 @@ class Cliente(BaseModel):
     __tablename__ = "clientes"
 
     numero_cliente = Column(String(20), nullable=False, unique=True, index=True)
-    tipo = Column(String(10), nullable=False)
+    tipo = Column(String(20), nullable=False)  # persona_fisica, persona_moral
     nombre = Column(String(255), nullable=False, index=True)
     apellido_paterno = Column(String(100), nullable=True)
     apellido_materno = Column(String(100), nullable=True)

@@ -2,6 +2,63 @@ export type CategoriaMaterial = 'cemento' | 'arena' | 'varilla' | 'block' | 'lad
 export type UnidadMedida = 'm2' | 'm3' | 'kg' | 'ton' | 'pieza' | 'metro' | 'caja' | 'litro' | 'otro'
 export type TipoMovimiento = 'entrada' | 'salida' | 'ajuste' | 'merma'
 
+// Labels y colores para UI
+export const categoriaLabels: Record<CategoriaMaterial, string> = {
+  cemento: 'Cemento',
+  arena: 'Arena',
+  varilla: 'Varilla',
+  block: 'Block',
+  ladrillo: 'Ladrillo',
+  acero: 'Acero',
+  madera: 'Madera',
+  tuberia: 'Tubería',
+  cable: 'Cable',
+  acabados: 'Acabados',
+  pintura: 'Pintura',
+  otro: 'Otro',
+}
+
+export const categoriaColors: Record<CategoriaMaterial, string> = {
+  cemento: 'secondary',
+  arena: 'warning',
+  varilla: 'info',
+  block: 'secondary',
+  ladrillo: 'orange',
+  acero: 'cyan',
+  madera: 'warning',
+  tuberia: 'info',
+  cable: 'purple',
+  acabados: 'success',
+  pintura: 'purple',
+  otro: 'secondary',
+}
+
+export const unidadLabels: Record<UnidadMedida, string> = {
+  m2: 'm²',
+  m3: 'm³',
+  kg: 'kg',
+  ton: 'ton',
+  pieza: 'pza',
+  metro: 'm',
+  caja: 'caja',
+  litro: 'L',
+  otro: 'otro',
+}
+
+export const tipoMovimientoLabels: Record<TipoMovimiento, string> = {
+  entrada: 'Entrada',
+  salida: 'Salida',
+  ajuste: 'Ajuste',
+  merma: 'Merma',
+}
+
+export const tipoMovimientoColors: Record<TipoMovimiento, string> = {
+  entrada: 'success',
+  salida: 'error',
+  ajuste: 'info',
+  merma: 'warning',
+}
+
 export interface Material {
   id: string
   codigo: string

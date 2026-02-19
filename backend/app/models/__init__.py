@@ -10,13 +10,14 @@ from app.models.cliente import Cliente
 from app.models.proyecto import Proyecto, FaseProyecto, DocumentoProyecto, FotoProyecto, EntradaBitacora
 from app.models.empleado import Empleado
 from app.models.subcontratista import Subcontratista
-from app.models.proveedor import Proveedor
+from app.models.proveedor import Proveedor, AccionProveedor, AdjuntoAccion
 from app.models.cotizacion import Cotizacion, PartidaCotizacion
 from app.models.material import Material, MovimientoInventario, PrecioMaterial, SolicitudCompra, ItemSolicitudCompra, OrdenCompra, ItemOrdenCompra
 from app.models.maquinaria import Maquinaria, MantenimientoMaquinaria
 from app.models.finanzas import Ingreso, Egreso, CuentaPorCobrar, PagoCuentaCobrar, CuentaPorPagar, PagoCuentaPagar
 from app.models.alerta import Alerta
-from app.models.unidad import Unidad
+from app.models.unidad import Unidad, ImagenUnidad, EtapaUnidad
+from app.models.project_config import ProjectConfig
 
 __all__ = [
     "Base",
@@ -30,6 +31,8 @@ __all__ = [
     "Empleado",
     "Subcontratista",
     "Proveedor",
+    "AccionProveedor",
+    "AdjuntoAccion",
     "Cotizacion",
     "PartidaCotizacion",
     "Material",
@@ -49,4 +52,7 @@ __all__ = [
     "PagoCuentaPagar",
     "Alerta",
     "Unidad",
+    "ImagenUnidad",
+    "EtapaUnidad",
+    "ProjectConfig",
 ]

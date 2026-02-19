@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, FolderOpen, FileText, Users, UserCheck,
-  Wrench, Package, DollarSign, ShoppingBag,
-  BarChart3, Settings, Menu, X, ChevronDown, ChevronRight, Home,
+  LayoutDashboard, UserCog,
+  Package, DollarSign, ShoppingBag,
+  Settings, Menu, X, ChevronDown, ChevronRight, Home,
 } from 'lucide-react'
 
 interface NavChild {
@@ -20,12 +20,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/proyectos', label: 'Proyectos', icon: FolderOpen },
   { href: '/unidades', label: 'Unidades / PH', icon: Home },
-  { href: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
-  { href: '/clientes', label: 'Clientes', icon: Users },
-  { href: '/empleados', label: 'Empleados', icon: UserCheck },
-  { href: '/subcontratistas', label: 'Subcontratistas', icon: Wrench },
+  { href: '/usuarios', label: 'Usuarios', icon: UserCog },
+  { href: '/proveedores', label: 'Proveedores', icon: ShoppingBag },
   {
     href: '/materiales', label: 'Materiales', icon: Package,
     children: [
@@ -41,10 +38,10 @@ const navItems: NavItem[] = [
       { href: '/finanzas/egresos', label: 'Egresos' },
       { href: '/finanzas/cobrar', label: 'Cuentas por Cobrar' },
       { href: '/finanzas/pagar', label: 'Cuentas por Pagar' },
+      { href: '/finanzas/roi', label: 'Análisis ROI' },
+      { href: '/finanzas/reportes', label: 'Reportes' },
     ],
   },
-  { href: '/proveedores', label: 'Proveedores', icon: ShoppingBag },
-  { href: '/reportes', label: 'Reportes', icon: BarChart3 },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
 ]
 
@@ -86,18 +83,14 @@ export function Sidebar() {
         `}
       >
         <nav className="h-full flex flex-col">
-          {/* Marca - Más grande y llamativa */}
+          {/* Logo */}
           <div className="px-6 py-6 border-b border-gray-800">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex justify-center">
               <img
                 src="/logo.png"
                 alt="Logo"
-                className="w-10 h-10 object-contain"
+                className="w-24 h-24 object-contain"
               />
-              <div>
-                <h1 className="text-xl font-bold text-white">Constructora Pro</h1>
-                <p className="text-xs text-gray-400">Sistema de Gestión</p>
-              </div>
             </div>
           </div>
 

@@ -9,25 +9,23 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 // Lazy loading de páginas
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
-const ClientesPage = lazy(() => import('@/pages/clientes/ClientesPage'))
-const ClienteDetallePage = lazy(() => import('@/pages/clientes/ClienteDetallePage'))
-const ProyectosPage = lazy(() => import('@/pages/proyectos/ProyectosPage'))
-const ProyectoDetallePage = lazy(() => import('@/pages/proyectos/ProyectoDetallePage'))
+const UsuariosPage = lazy(() => import('@/pages/usuarios/UsuariosPage'))
 const UnidadesPage = lazy(() => import('@/pages/unidades/UnidadesPage'))
-const EmpleadosPage = lazy(() => import('@/pages/empleados/EmpleadosPage'))
-const EmpleadoDetallePage = lazy(() => import('@/pages/empleados/EmpleadoDetallePage'))
-const SubcontratistasPage = lazy(() => import('@/pages/subcontratistas/SubcontratistasPage'))
+const UnidadDetallePage = lazy(() => import('@/pages/unidades/UnidadDetallePage'))
 const ProveedoresPage = lazy(() => import('@/pages/proveedores/ProveedoresPage'))
-const CotizacionesPage = lazy(() => import('@/pages/cotizaciones/CotizacionesPage'))
+const ProveedorDetallePage = lazy(() => import('@/pages/proveedores/ProveedorDetallePage'))
 const MaterialesPage = lazy(() => import('@/pages/materiales/MaterialesPage'))
 const SolicitudesPage = lazy(() => import('@/pages/materiales/SolicitudesPage'))
 const OrdenesPage = lazy(() => import('@/pages/materiales/OrdenesPage'))
 const MaquinariaPage = lazy(() => import('@/pages/maquinaria/MaquinariaPage'))
+const FinanzasDashboard = lazy(() => import('@/pages/finanzas/FinanzasDashboard'))
 const IngresosPage = lazy(() => import('@/pages/finanzas/IngresosPage'))
 const EgresosPage = lazy(() => import('@/pages/finanzas/EgresosPage'))
 const CuentasCobrarPage = lazy(() => import('@/pages/finanzas/CuentasCobrarPage'))
 const CuentasPagearPage = lazy(() => import('@/pages/finanzas/CuentasPagearPage'))
 const ReportesPage = lazy(() => import('@/pages/reportes/ReportesPage'))
+const ROIAnalysisPage = lazy(() => import('@/pages/roi/ROIAnalysisPage'))
+const MiUnidadPage = lazy(() => import('@/pages/cliente/MiUnidadPage'))
 
 // Placeholder para configuración
 function PlaceholderPage({ title }: { title: string }) {
@@ -40,18 +38,42 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 export default function App() {
+  const setUser = useAuthStore((state) => state.setUser)
   const setLoading = useAuthStore((state) => state.setLoading)
 
-  // Desactivar loading inicial
+  // Verificar sesión existente al cargar
+  const { data: user, isLoading: isLoadingUser, isError } = useGetMe()
+
   useEffect(() => {
-    setLoading(false)
-  }, [setLoading])
+    if (!isLoadingUser) {
+      if (user && !isError) {
+        setUser(user)
+      } else {
+        setLoading(false)
+      }
+    }
+  }, [user, isLoadingUser, isError, setUser, setLoading])
+
+  // Mostrar loading mientras verifica la sesión
+  if (isLoadingUser) {
+    return <LoadingSpinner />
+  }
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         {/* Rutas públicas */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Ruta especial para clientes */}
+        <Route
+          path="/mi-unidad"
+          element={
+            <ProtectedRoute>
+              <MiUnidadPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Rutas protegidas */}
         <Route
@@ -65,27 +87,20 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Clientes */}
-          <Route path="clientes" element={<ClientesPage />} />
-          <Route path="clientes/:id" element={<ClienteDetallePage />} />
-
-          {/* Proyectos */}
-          <Route path="proyectos" element={<ProyectosPage />} />
-          <Route path="proyectos/:id" element={<ProyectoDetallePage />} />
+          {/* Clientes - Redirigir a Usuarios */}
+          <Route path="clientes" element={<Navigate to="/usuarios" replace />} />
+          <Route path="clientes/:id" element={<Navigate to="/usuarios" replace />} />
 
           {/* Unidades */}
           <Route path="unidades" element={<UnidadesPage />} />
-          <Route path="proyectos/:proyectoId/unidades" element={<UnidadesPage />} />
+          <Route path="unidades/:id" element={<UnidadDetallePage />} />
 
-          {/* Cotizaciones */}
-          <Route path="cotizaciones" element={<CotizacionesPage />} />
+          {/* Usuarios */}
+          <Route path="usuarios" element={<UsuariosPage />} />
 
-          {/* Empleados */}
-          <Route path="empleados" element={<EmpleadosPage />} />
-          <Route path="empleados/:id" element={<EmpleadoDetallePage />} />
 
-          {/* Subcontratistas */}
-          <Route path="subcontratistas" element={<SubcontratistasPage />} />
+          {/* Subcontratistas - Redirigir a Proveedores */}
+          <Route path="subcontratistas" element={<Navigate to="/proveedores" replace />} />
 
           {/* Materiales */}
           <Route path="materiales" element={<MaterialesPage />} />
@@ -97,17 +112,21 @@ export default function App() {
           <Route path="maquinaria" element={<MaquinariaPage />} />
 
           {/* Finanzas */}
-          <Route path="finanzas" element={<Navigate to="/finanzas/ingresos" replace />} />
+          <Route path="finanzas" element={<FinanzasDashboard />} />
           <Route path="finanzas/ingresos" element={<IngresosPage />} />
           <Route path="finanzas/egresos" element={<EgresosPage />} />
           <Route path="finanzas/cobrar" element={<CuentasCobrarPage />} />
           <Route path="finanzas/pagar" element={<CuentasPagearPage />} />
+          <Route path="finanzas/roi" element={<ROIAnalysisPage />} />
+          <Route path="finanzas/reportes" element={<ReportesPage />} />
+
+          {/* Redirecciones antiguas */}
+          <Route path="roi" element={<Navigate to="/finanzas/roi" replace />} />
+          <Route path="reportes" element={<Navigate to="/finanzas/reportes" replace />} />
 
           {/* Proveedores */}
           <Route path="proveedores" element={<ProveedoresPage />} />
-
-          {/* Reportes */}
-          <Route path="reportes" element={<ReportesPage />} />
+          <Route path="proveedores/:id" element={<ProveedorDetallePage />} />
 
           {/* Configuración (futuro) */}
           <Route path="configuracion" element={<PlaceholderPage title="Configuración" />} />

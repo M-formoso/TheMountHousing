@@ -1,5 +1,6 @@
-import { useCreateCliente } from '@/services/clientes.service'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import api from '@/lib/axios'
 
 interface Props {
   onClose: () => void
@@ -7,22 +8,33 @@ interface Props {
 }
 
 export function ClienteFormModal({ onClose, onSuccess }: Props) {
-  const createMutation = useCreateCliente()
+  const queryClient = useQueryClient()
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
-    tipo: 'persona_fisica' as const,
+    tipo: 'persona_fisica',
     nombre: '',
+    apellido_paterno: '',
+    apellido_materno: '',
+    razon_social: '',
     rfc: '',
     email: '',
     telefono: '',
     direccion: '',
     ciudad: '',
-    estado_geo: '',
+    estado: '',
     codigo_postal: '',
-    representante_legal: '',
-    giro_empresarial: '',
     notas: '',
+  })
+
+  const createMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await api.post('/api/v1/clientes', data)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    },
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -32,25 +44,46 @@ export function ClienteFormModal({ onClose, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Generar número de cliente automáticamente
+    const numeroCliente = `CLI-${Date.now().toString().slice(-6)}`
+
     try {
       await createMutation.mutateAsync({
+        numero_cliente: numeroCliente,
         tipo: formData.tipo,
         nombre: formData.nombre,
+        apellido_paterno: formData.apellido_paterno || undefined,
+        apellido_materno: formData.apellido_materno || undefined,
+        razon_social: formData.tipo === 'persona_moral' ? formData.razon_social : undefined,
         rfc: formData.rfc || undefined,
         email: formData.email,
         telefono: formData.telefono || undefined,
         direccion: formData.direccion || undefined,
         ciudad: formData.ciudad || undefined,
-        estado_geo: formData.estado_geo || undefined,
+        estado: formData.estado || undefined,
         codigo_postal: formData.codigo_postal || undefined,
-        representante_legal: formData.tipo === 'persona_moral' ? formData.representante_legal : undefined,
-        giro_empresarial: formData.tipo === 'persona_moral' ? formData.giro_empresarial : undefined,
         notas: formData.notas || undefined,
       })
       onSuccess()
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(detail || 'Error al crear cliente')
+      const response = (err as { response?: { data?: { detail?: unknown } } })?.response?.data
+      let errorMsg = 'Error al crear cliente'
+
+      if (response?.detail) {
+        // Si es un array de errores de validación de FastAPI
+        if (Array.isArray(response.detail)) {
+          const firstError = response.detail[0]
+          if (firstError?.msg) {
+            const field = firstError.loc?.[1] || 'campo'
+            errorMsg = `${field}: ${firstError.msg}`
+          }
+        } else if (typeof response.detail === 'string') {
+          errorMsg = response.detail
+        }
+      }
+
+      setError(errorMsg)
     }
   }
 
@@ -70,58 +103,170 @@ export function ClienteFormModal({ onClose, onSuccess }: Props) {
             <select name="tipo" value={formData.tipo} onChange={handleChange} className="input-field">
               <option value="persona_fisica">Persona Física</option>
               <option value="persona_moral">Persona Moral</option>
-              <option value="gobierno">Gobierno</option>
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Nombre <span className="text-red-500">*</span></label>
-            <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} className="input-field" required />
-          </div>
+          {formData.tipo === 'persona_fisica' ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">Apellido Paterno</label>
+                  <input
+                    type="text"
+                    name="apellido_paterno"
+                    value={formData.apellido_paterno}
+                    onChange={handleChange}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">Apellido Materno</label>
+                  <input
+                    type="text"
+                    name="apellido_materno"
+                    value={formData.apellido_materno}
+                    onChange={handleChange}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
+                  Razón Social <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="razon_social"
+                  value={formData.razon_social}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
+                  Nombre de Contacto <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-1">RFC</label>
-              <input type="text" name="rfc" value={formData.rfc} onChange={handleChange} className="input-field" maxLength={13} />
+              <input
+                type="text"
+                name="rfc"
+                value={formData.rfc}
+                onChange={handleChange}
+                className="input-field"
+                maxLength={13}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">Email <span className="text-red-500">*</span></label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className="input-field" required />
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="input-field"
+                required
+              />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-1">Teléfono</label>
-            <input type="text" name="telefono" value={formData.telefono} onChange={handleChange} className="input-field" />
+            <input
+              type="text"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleChange}
+              className="input-field"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">Dirección</label>
+            <input
+              type="text"
+              name="direccion"
+              value={formData.direccion}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-1">Ciudad</label>
-              <input type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} className="input-field" />
+              <input
+                type="text"
+                name="ciudad"
+                value={formData.ciudad}
+                onChange={handleChange}
+                className="input-field"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-1">Estado</label>
-              <input type="text" name="estado_geo" value={formData.estado_geo} onChange={handleChange} className="input-field" />
+              <input
+                type="text"
+                name="estado"
+                value={formData.estado}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">C.P.</label>
+              <input
+                type="text"
+                name="codigo_postal"
+                value={formData.codigo_postal}
+                onChange={handleChange}
+                className="input-field"
+                maxLength={10}
+              />
             </div>
           </div>
 
-          {formData.tipo === 'persona_moral' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Representante Legal</label>
-                <input type="text" name="representante_legal" value={formData.representante_legal} onChange={handleChange} className="input-field" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">Giro Empresarial</label>
-                <input type="text" name="giro_empresarial" value={formData.giro_empresarial} onChange={handleChange} className="input-field" />
-              </div>
-            </>
-          )}
-
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-1">Notas</label>
-            <textarea name="notas" value={formData.notas} onChange={handleChange} rows={2} className="input-field resize-none" />
+            <textarea
+              name="notas"
+              value={formData.notas}
+              onChange={handleChange}
+              rows={2}
+              className="input-field resize-none"
+            />
           </div>
 
           {error && (
@@ -130,7 +275,9 @@ export function ClienteFormModal({ onClose, onSuccess }: Props) {
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
+            <button type="button" onClick={onClose} className="btn-ghost">
+              Cancelar
+            </button>
             <button type="submit" disabled={createMutation.isPending} className="btn-primary">
               {createMutation.isPending ? 'Creando...' : 'Crear Cliente'}
             </button>

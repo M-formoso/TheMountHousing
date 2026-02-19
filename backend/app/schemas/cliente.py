@@ -5,7 +5,7 @@ from typing import Optional
 
 class ClienteCreate(BaseModel):
     numero_cliente: str = Field(..., max_length=20)
-    tipo: str = Field(..., max_length=10)
+    tipo: str = Field(..., max_length=20)
     nombre: str = Field(..., min_length=1, max_length=255)
     apellido_paterno: Optional[str] = Field(None, max_length=100)
     apellido_materno: Optional[str] = Field(None, max_length=100)

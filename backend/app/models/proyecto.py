@@ -78,7 +78,6 @@ class Proyecto(BaseModel):
     fotos = relationship("FotoProyecto", back_populates="proyecto", cascade="all, delete-orphan")
     bitacora = relationship("EntradaBitacora", back_populates="proyecto", order_by="EntradaBitacora.created_at.desc()")
     cotizacion = relationship("Cotizacion", back_populates="proyecto", uselist=False)
-    unidades = relationship("Unidad", back_populates="proyecto", cascade="all, delete-orphan")
 
 
 class FaseProyecto(BaseModel):

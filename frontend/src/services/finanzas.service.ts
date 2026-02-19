@@ -48,10 +48,11 @@ export function useCreateEgreso() {
   })
 }
 
-export function useUpdateEgreso(id: string) {
+export function useUpdateEgreso() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { estado_pago?: string }) => api.put<Egreso>(`/api/v1/finanzas/egresos/${id}`, data).then((r) => r.data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<EgresoCreate> & { estado_pago?: string } }) =>
+      api.put<Egreso>(`/api/v1/finanzas/egresos/${id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['egresos'] }),
   })
 }

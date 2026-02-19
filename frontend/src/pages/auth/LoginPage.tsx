@@ -56,17 +56,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md card p-8">
-        {/* Logo / Marca */}
+        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center">
             <img
               src="/logo.png"
-              alt="Logo Constructora Pro"
-              className="w-20 h-20 object-contain"
+              alt="Logo"
+              className="w-40 h-40 object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-primary-800">Constructora Pro</h1>
-          <p className="text-secondary-500 text-sm mt-1">Sistema de Gestión</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
