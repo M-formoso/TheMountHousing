@@ -6,9 +6,7 @@ Create Date: 2026-02-19
 
 """
 from alembic import op
-import sqlalchemy as sa
-from datetime import datetime
-import uuid
+from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision = '004'
@@ -20,26 +18,23 @@ depends_on = None
 def upgrade():
     # Password: Admin123!
     # Hash generado con bcrypt
-    hashed_password = '$2b$12$1uZDDcjIkg30cleawBjFzObqk4uiWdP2WES.OH7MOmVArEDpYilG2'
-
-    op.execute(
-        f"""
+    conn = op.get_bind()
+    conn.execute(text("""
         INSERT INTO usuarios (id, email, hashed_password, nombre, apellido_paterno, rol, activo, created_at, updated_at)
-        VALUES (
-            '{str(uuid.uuid4())}',
+        SELECT
+            gen_random_uuid()::text,
             'admin@constructorapro.com',
-            '{hashed_password}',
+            '$2b$12$1uZDDcjIkg30cleawBjFzObqk4uiWdP2WES.OH7MOmVArEDpYilG2',
             'Admin',
             'Sistema',
             'super_admin',
             true,
-            '{datetime.utcnow().isoformat()}',
-            '{datetime.utcnow().isoformat()}'
-        )
-        ON CONFLICT (email) DO NOTHING;
-        """
-    )
+            NOW(),
+            NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE email = 'admin@constructorapro.com');
+    """))
 
 
 def downgrade():
-    op.execute("DELETE FROM usuarios WHERE email = 'admin@constructorapro.com';")
+    conn = op.get_bind()
+    conn.execute(text("DELETE FROM usuarios WHERE email = 'admin@constructorapro.com';"))
