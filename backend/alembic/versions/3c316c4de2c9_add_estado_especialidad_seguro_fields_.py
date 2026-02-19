@@ -20,15 +20,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create enum types first
-    estadoproveedor = sa.Enum('ACTIVO', 'INACTIVO', 'SUSPENDIDO', name='estadoproveedor')
     especialidadcontratista = sa.Enum('ALBANILERIA', 'PLOMERIA', 'ELECTRICIDAD', 'ACABADOS', 'CARPINTERIA', 'PINTURA', 'SOLDADURA', 'VIDRIERIA', 'JARDINERIA', 'IMPERMEABILIZACION', 'HERRERIA', 'GENERAL', 'OTRO', name='especialidadcontratista')
-    estadoproveedor.create(op.get_bind(), checkfirst=True)
     especialidadcontratista.create(op.get_bind(), checkfirst=True)
 
-    # Add estado column with default value for existing rows
-    op.add_column('proveedores', sa.Column('estado', estadoproveedor, nullable=True))
-    op.execute("UPDATE proveedores SET estado = 'ACTIVO' WHERE estado IS NULL")
-    op.alter_column('proveedores', 'estado', nullable=False)
+    # La columna 'estado' ya existe en proveedores (creada en 001), no la agregamos de nuevo
 
     # Add other columns
     op.add_column('proveedores', sa.Column('especialidad', especialidadcontratista, nullable=True))
@@ -50,8 +45,6 @@ def downgrade() -> None:
     op.drop_column('proveedores', 'tiene_seguro')
     op.drop_column('proveedores', 'numero_licencia')
     op.drop_column('proveedores', 'especialidad')
-    op.drop_column('proveedores', 'estado')
 
     # Drop enum types
     sa.Enum(name='especialidadcontratista').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='estadoproveedor').drop(op.get_bind(), checkfirst=True)
