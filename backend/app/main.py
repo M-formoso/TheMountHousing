@@ -39,11 +39,26 @@ async def check_admin():
         from app.db.session import SessionLocal
         from sqlalchemy import text
         db = SessionLocal()
-        result = db.execute(text("SELECT id, email, nombre, rol FROM usuarios WHERE email = 'admin@constructorapro.com'"))
+        result = db.execute(text("SELECT id, email, nombre, rol, hashed_password FROM usuarios WHERE email = 'admin@constructorapro.com'"))
         user = result.fetchone()
         db.close()
         if user:
-            return {"exists": True, "email": user[1], "nombre": user[2], "rol": user[3]}
+            # Probar verificación de password
+            import bcrypt
+            password = "Admin123!"
+            hashed = user[4]
+            try:
+                is_valid = bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+            except Exception as e:
+                is_valid = f"Error: {e}"
+            return {
+                "exists": True,
+                "email": user[1],
+                "nombre": user[2],
+                "rol": user[3],
+                "hash_prefix": hashed[:20] + "...",
+                "password_valid": is_valid
+            }
         return {"exists": False}
     except Exception as e:
         return {"error": str(e)}
