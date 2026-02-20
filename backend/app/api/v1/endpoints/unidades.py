@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
@@ -9,6 +10,8 @@ from app.core.security import get_password_hash
 from app.models.usuario import Usuario, Rol
 from app.models.unidad import Unidad, ImagenUnidad, EtapaUnidad
 from app.models.cliente import Cliente
+from app.models.finanzas import Egreso, CategoriaEgreso
+from app.models.material import OrdenCompra
 from app.schemas.unidad import (
     UnidadCreate, UnidadUpdate, UnidadResponse, UnidadDetalleResponse,
     VenderUnidadRequest, ImagenCreate, ImagenResponse,
@@ -481,3 +484,125 @@ def seed_unidades(
 
     db.commit()
     return {"message": f"Se crearon {len(created)} unidades", "unidades": created}
+
+
+# ============ COSTOS POR UNIDAD ============
+
+@router.get("/{unidad_id}/costos")
+def get_costos_unidad(
+    unidad_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Obtiene el resumen de costos de una unidad (materiales + mano de obra)"""
+    unidad = db.query(Unidad).filter(Unidad.id == unidad_id, Unidad.activo.is_(True)).first()
+    if not unidad:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+
+    # Obtener egresos por categoría
+    egresos_materiales = db.query(func.sum(Egreso.monto)).filter(
+        Egreso.unidad_id == unidad_id,
+        Egreso.activo.is_(True),
+        Egreso.categoria == CategoriaEgreso.MATERIALES
+    ).scalar() or 0
+
+    egresos_mano_obra = db.query(func.sum(Egreso.monto)).filter(
+        Egreso.unidad_id == unidad_id,
+        Egreso.activo.is_(True),
+        Egreso.categoria == CategoriaEgreso.MANO_OBRA
+    ).scalar() or 0
+
+    egresos_subcontratistas = db.query(func.sum(Egreso.monto)).filter(
+        Egreso.unidad_id == unidad_id,
+        Egreso.activo.is_(True),
+        Egreso.categoria == CategoriaEgreso.SUBCONTRATISTAS
+    ).scalar() or 0
+
+    egresos_otros = db.query(func.sum(Egreso.monto)).filter(
+        Egreso.unidad_id == unidad_id,
+        Egreso.activo.is_(True),
+        Egreso.categoria.notin_([CategoriaEgreso.MATERIALES, CategoriaEgreso.MANO_OBRA, CategoriaEgreso.SUBCONTRATISTAS])
+    ).scalar() or 0
+
+    # Obtener órdenes de compra asignadas
+    ordenes_total = db.query(func.sum(OrdenCompra.total)).filter(
+        OrdenCompra.unidad_id == unidad_id,
+        OrdenCompra.activo.is_(True)
+    ).scalar() or 0
+
+    total_costos = float(egresos_materiales) + float(egresos_mano_obra) + float(egresos_subcontratistas) + float(egresos_otros) + float(ordenes_total)
+
+    return {
+        "unidad_id": unidad_id,
+        "numero_unidad": unidad.numero_unidad,
+        "costos": {
+            "materiales": float(egresos_materiales),
+            "mano_obra": float(egresos_mano_obra),
+            "subcontratistas": float(egresos_subcontratistas),
+            "otros": float(egresos_otros),
+            "ordenes_compra": float(ordenes_total),
+            "total": total_costos,
+        },
+        "precio_venta": float(unidad.precio_total or 0),
+        "margen": float(unidad.precio_total or 0) - total_costos if unidad.precio_total else None,
+    }
+
+
+@router.get("/{unidad_id}/egresos")
+def get_egresos_unidad(
+    unidad_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Obtiene todos los egresos asignados a una unidad"""
+    unidad = db.query(Unidad).filter(Unidad.id == unidad_id, Unidad.activo.is_(True)).first()
+    if not unidad:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+
+    egresos = db.query(Egreso).filter(
+        Egreso.unidad_id == unidad_id,
+        Egreso.activo.is_(True)
+    ).order_by(Egreso.fecha.desc()).all()
+
+    return [
+        {
+            "id": e.id,
+            "categoria": e.categoria.value if e.categoria else None,
+            "concepto": e.concepto,
+            "monto": float(e.monto),
+            "fecha": e.fecha.isoformat() if e.fecha else None,
+            "proveedor_id": e.proveedor_id,
+            "notas": e.notas,
+        }
+        for e in egresos
+    ]
+
+
+@router.get("/{unidad_id}/ordenes")
+def get_ordenes_unidad(
+    unidad_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Obtiene todas las órdenes de compra asignadas a una unidad"""
+    unidad = db.query(Unidad).filter(Unidad.id == unidad_id, Unidad.activo.is_(True)).first()
+    if not unidad:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+
+    ordenes = db.query(OrdenCompra).filter(
+        OrdenCompra.unidad_id == unidad_id,
+        OrdenCompra.activo.is_(True)
+    ).order_by(OrdenCompra.fecha_orden.desc()).all()
+
+    return [
+        {
+            "id": o.id,
+            "numero": o.numero,
+            "proveedor_id": o.proveedor_id,
+            "total": float(o.total),
+            "fecha_orden": o.fecha_orden.isoformat() if o.fecha_orden else None,
+            "estado": o.estado,
+            "notas": o.notas,
+        }
+        for o in ordenes
+    ]

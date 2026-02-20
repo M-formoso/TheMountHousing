@@ -130,6 +130,7 @@ class OrdenCompra(BaseModel):
     numero = Column(String(30), unique=True, nullable=False, index=True)
     solicitud_compra_id = Column(String(36), ForeignKey("solicitudes_compra.id"), nullable=True)
     proveedor_id = Column(String(36), ForeignKey("proveedores.id"), nullable=False)
+    unidad_id = Column(String(36), ForeignKey("unidades.id"), nullable=True)  # PH asignado
     fecha_orden = Column(Date, nullable=False)
     fecha_entrega_esperada = Column(Date, nullable=True)
     estado = Column(String(30), default="pendiente")  # pendiente, confirmada, recibida, cancelada
@@ -143,6 +144,7 @@ class OrdenCompra(BaseModel):
 
     # Relaciones
     items = relationship("ItemOrdenCompra", back_populates="orden", cascade="all, delete-orphan")
+    unidad = relationship("Unidad", back_populates="ordenes_compra")
 
 
 class ItemOrdenCompra(BaseModel):

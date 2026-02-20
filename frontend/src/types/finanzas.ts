@@ -110,6 +110,7 @@ export interface Egreso {
   monto: number
   fecha: string
   proyecto_id: string | null
+  unidad_id: string | null
   proveedor_id: string | null
   subcontratista_id: string | null
   empleado_id: string | null
@@ -130,6 +131,7 @@ export interface EgresoCreate {
   monto: number
   fecha: string
   proyecto_id?: string
+  unidad_id?: string
   proveedor_id?: string
   subcontratista_id?: string
   empleado_id?: string

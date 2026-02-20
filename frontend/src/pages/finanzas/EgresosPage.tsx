@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { ArrowLeft, Plus, X, Download, TrendingDown, Calendar, CreditCard, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, X, Download, TrendingDown, Calendar, CreditCard, CheckCircle, Clock, Home } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useEgresos, useCreateEgreso, useDeleteEgreso, useUpdateEgreso } from '@/services/finanzas.service'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { DataTable } from '@/components/ui/data-table'
@@ -10,7 +11,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Egreso, EgresoCreate, CategoriaEgreso, MetodoPago, EstadoPago } from '@/types/finanzas'
 import { categoriaEgresoLabels, categoriaEgresoColors, metodoPagoLabels, estadoPagoLabels, estadoPagoColors } from '@/types/finanzas'
+import api from '@/lib/axios'
 import * as XLSX from 'xlsx'
+
+interface Unidad {
+  id: string
+  numero_unidad: string
+  nombre?: string
+}
 
 // Modal de formulario
 function EgresoFormModal({
@@ -18,13 +26,15 @@ function EgresoFormModal({
   onClose,
   egreso,
   onSave,
+  unidades,
 }: {
   open: boolean
   onClose: () => void
   egreso: Egreso | null
   onSave: (data: EgresoCreate) => Promise<void>
+  unidades: Unidad[]
 }) {
-  const [form, setForm] = useState<EgresoCreate>({
+  const [form, setForm] = useState<EgresoCreate & { unidad_id?: string }>({
     categoria: egreso?.categoria ?? 'otros',
     concepto: egreso?.concepto ?? '',
     monto: egreso?.monto ?? 0,
@@ -33,6 +43,7 @@ function EgresoFormModal({
     referencia: egreso?.referencia ?? '',
     factura: egreso?.factura ?? '',
     notas: egreso?.notas ?? '',
+    unidad_id: (egreso as any)?.unidad_id ?? '',
   })
   const [saving, setSaving] = useState(false)
 
@@ -41,7 +52,7 @@ function EgresoFormModal({
     if (!form.concepto || form.monto <= 0) return
     setSaving(true)
     try {
-      await onSave(form)
+      await onSave({ ...form, unidad_id: form.unidad_id || undefined } as any)
       onClose()
     } finally {
       setSaving(false)
@@ -70,6 +81,29 @@ function EgresoFormModal({
                   <option key={v} value={v}>{l}</option>
                 ))}
               </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
+                <span className="flex items-center gap-1">
+                  <Home size={14} />
+                  Asignar a PH (opcional)
+                </span>
+              </label>
+              <select
+                value={form.unidad_id ?? ''}
+                onChange={(e) => setForm((p) => ({ ...p, unidad_id: e.target.value }))}
+                className="input-field w-full"
+              >
+                <option value="">Sin asignar a PH específico</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.numero_unidad} {u.nombre ? `- ${u.nombre}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-secondary-400 mt-1">
+                Si asignas a un PH, este gasto se sumará a los costos de esa unidad
+              </p>
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-secondary-700 mb-1">Concepto *</label>
@@ -202,6 +236,15 @@ export default function EgresosPage() {
   })
   const createMutation = useCreateEgreso()
   const deleteMutation = useDeleteEgreso()
+
+  // Obtener lista de unidades para el selector
+  const { data: unidades = [] } = useQuery<Unidad[]>({
+    queryKey: ['unidades-list'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/unidades')
+      return res.data
+    },
+  })
 
   const [showForm, setShowForm] = useState(false)
   const [editingEgreso, setEditingEgreso] = useState<Egreso | null>(null)
@@ -485,6 +528,7 @@ export default function EgresosPage() {
         onClose={() => setShowForm(false)}
         egreso={editingEgreso}
         onSave={handleCreate}
+        unidades={unidades}
       />
     </div>
   )

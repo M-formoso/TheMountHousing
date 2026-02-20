@@ -64,6 +64,7 @@ class Egreso(BaseModel):
     fecha = Column(Date, nullable=False)
 
     proyecto_id = Column(String(36), ForeignKey("proyectos.id"), nullable=True)
+    unidad_id = Column(String(36), ForeignKey("unidades.id"), nullable=True)  # PH asignado
     proveedor_id = Column(String(36), ForeignKey("proveedores.id"), nullable=True)
     subcontratista_id = Column(String(36), ForeignKey("subcontratistas.id"), nullable=True)
     empleado_id = Column(String(36), ForeignKey("empleados.id"), nullable=True)
@@ -77,6 +78,9 @@ class Egreso(BaseModel):
     estado_pago = Column(SAEnum(EstadoPago), default=EstadoPago.PENDIENTE)
 
     notas = Column(String, nullable=True)
+
+    # Relación con unidad
+    unidad = relationship("Unidad", back_populates="egresos")
 
 
 class CuentaPorCobrar(BaseModel):

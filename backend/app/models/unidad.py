@@ -63,6 +63,8 @@ class Unidad(BaseModel):
     cliente = relationship("Cliente", back_populates="unidades")
     imagenes = relationship("ImagenUnidad", back_populates="unidad", cascade="all, delete-orphan")
     etapas = relationship("EtapaUnidad", back_populates="unidad", cascade="all, delete-orphan", order_by="EtapaUnidad.orden")
+    egresos = relationship("Egreso", back_populates="unidad")
+    ordenes_compra = relationship("OrdenCompra", back_populates="unidad")
 
 
 class ImagenUnidad(BaseModel):

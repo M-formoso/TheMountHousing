@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, Plus, Trash2, Check, Save, X,
   CheckCircle, Clock, Building2, Loader2, Copy,
   Calendar, Edit2, Eye, FileText, Pencil, ChevronDown, ChevronUp,
-  Upload, Camera,
+  Upload, Camera, Wallet, Hammer, Package, TrendingUp,
 } from 'lucide-react'
 import api from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -64,6 +64,31 @@ interface UnidadDetalle {
   cliente?: Cliente
   imagenes: Imagen[]
   etapas: Etapa[]
+}
+
+interface CostosUnidad {
+  unidad_id: string
+  numero_unidad: string
+  costos: {
+    materiales: number
+    mano_obra: number
+    subcontratistas: number
+    otros: number
+    ordenes_compra: number
+    total: number
+  }
+  precio_venta: number
+  margen: number | null
+}
+
+interface EgresoUnidad {
+  id: string
+  categoria: string
+  concepto: string
+  monto: number
+  fecha: string
+  proveedor_id?: string
+  notas?: string
 }
 
 const formatCurrency = (value?: number) => {
@@ -605,6 +630,24 @@ export default function UnidadDetallePage() {
     },
   })
 
+  const { data: costos } = useQuery<CostosUnidad>({
+    queryKey: ['unidad-costos', id],
+    queryFn: async () => {
+      const res = await api.get(`/api/v1/unidades/${id}/costos`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const { data: egresos = [] } = useQuery<EgresoUnidad[]>({
+    queryKey: ['unidad-egresos', id],
+    queryFn: async () => {
+      const res = await api.get(`/api/v1/unidades/${id}/egresos`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
   const venderMutation = useMutation({
     mutationFn: (data: { cliente_id: string; crear_usuario: boolean }) =>
       api.post(`/api/v1/unidades/${id}/vender`, data),
@@ -990,6 +1033,91 @@ export default function UnidadDetallePage() {
                 <Button onClick={() => setShowVenderModal(true)} className="w-full">
                   Vender Unidad
                 </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Costos asignados */}
+          <div className="card p-6">
+            <h2 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center gap-2">
+              <Wallet size={20} className="text-amber-600" />
+              Costos Asignados
+            </h2>
+            {costos ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-secondary-500 flex items-center gap-2">
+                    <Package size={14} />
+                    Materiales
+                  </span>
+                  <span className="font-medium">{formatCurrency(costos.costos.materiales)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-secondary-500 flex items-center gap-2">
+                    <Hammer size={14} />
+                    Mano de Obra
+                  </span>
+                  <span className="font-medium">{formatCurrency(costos.costos.mano_obra)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-secondary-500 flex items-center gap-2">
+                    <User size={14} />
+                    Subcontratistas
+                  </span>
+                  <span className="font-medium">{formatCurrency(costos.costos.subcontratistas)}</span>
+                </div>
+                {costos.costos.otros > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-secondary-500">Otros</span>
+                    <span className="font-medium">{formatCurrency(costos.costos.otros)}</span>
+                  </div>
+                )}
+                {costos.costos.ordenes_compra > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-secondary-500">Órdenes de Compra</span>
+                    <span className="font-medium">{formatCurrency(costos.costos.ordenes_compra)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-3 border-t font-semibold">
+                  <span className="text-secondary-700">Total Costos</span>
+                  <span className="text-amber-600">{formatCurrency(costos.costos.total)}</span>
+                </div>
+                {costos.margen !== null && (
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-secondary-500 flex items-center gap-2">
+                      <TrendingUp size={14} />
+                      Margen
+                    </span>
+                    <span className={`font-bold ${costos.margen >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(costos.margen)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-secondary-400 text-center py-4 text-sm">
+                Sin costos asignados
+              </p>
+            )}
+
+            {/* Lista de egresos */}
+            {egresos.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <h3 className="text-sm font-medium text-secondary-700 mb-2">Detalle de Gastos</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {egresos.map((egreso) => (
+                    <div key={egreso.id} className="text-xs p-2 bg-secondary-50 rounded">
+                      <div className="flex justify-between">
+                        <span className="font-medium truncate flex-1">{egreso.concepto}</span>
+                        <span className="text-secondary-700 ml-2">{formatCurrency(egreso.monto)}</span>
+                      </div>
+                      <div className="flex justify-between text-secondary-400 mt-1">
+                        <span>{egreso.categoria}</span>
+                        <span>{egreso.fecha ? new Date(egreso.fecha).toLocaleDateString('es-MX') : '-'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
