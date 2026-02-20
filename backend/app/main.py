@@ -33,6 +33,36 @@ async def health():
 async def test():
     return {"message": "API working"}
 
+@app.post("/test-login")
+async def test_login(data: dict):
+    """Test login sin pasar por el endpoint real"""
+    try:
+        from app.db.session import SessionLocal
+        from app.services.auth_service import AuthService
+
+        db = SessionLocal()
+        service = AuthService(db)
+
+        email = data.get("email", "")
+        password = data.get("password", "")
+
+        user = service.get_user_by_email(email)
+        if not user:
+            db.close()
+            return {"step": "get_user", "error": "User not found", "email": email}
+
+        from app.core.security import verify_password
+        password_ok = verify_password(password, user.hashed_password)
+
+        if not password_ok:
+            db.close()
+            return {"step": "verify_password", "error": "Password invalid"}
+
+        db.close()
+        return {"step": "success", "user": user.email, "rol": user.rol}
+    except Exception as e:
+        return {"step": "exception", "error": str(e)}
+
 @app.get("/check-admin")
 async def check_admin():
     try:
