@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script de inicio para Railway - resetea alembic y corre migraciones"""
+"""Script de inicio para Railway - resetea DB y corre migraciones"""
 import os
 import subprocess
 import sys
@@ -10,15 +10,18 @@ from app.db.session import engine
 def main():
     print("=== STARTUP SCRIPT ===")
 
-    # 1. Intentar dropear alembic_version para forzar migraciones
-    print("Checking database connection and resetting alembic...")
+    # 1. Borrar TODO el schema public y recrearlo
+    print("Resetting database schema...")
     try:
         with engine.connect() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+            conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
+            conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
             conn.commit()
-            print("Alembic version table dropped (if existed)")
+            print("Database schema reset successfully!")
     except Exception as e:
-        print(f"Warning: Could not reset alembic_version: {e}")
+        print(f"Warning: Could not reset schema: {e}")
 
     # 2. Correr migraciones
     print("Running migrations...")
