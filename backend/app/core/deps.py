@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Cookie
+from fastapi import Depends, HTTPException, Cookie, Header
 from sqlalchemy.orm import Session
 from jose import JWTError
 from app.core.security import decode_token
@@ -8,12 +8,20 @@ from app.models.usuario import Usuario, Rol
 
 async def get_current_user(
     access_token: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> Usuario:
-    if not access_token:
+    # Primero intentar obtener token del header Authorization (Bearer token)
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]  # Remover "Bearer "
+    elif access_token:
+        token = access_token
+
+    if not token:
         raise HTTPException(status_code=401, detail="No autenticado")
     try:
-        payload = decode_token(access_token)
+        payload = decode_token(token)
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Token inválido")
         user_id: str | None = payload.get("sub")

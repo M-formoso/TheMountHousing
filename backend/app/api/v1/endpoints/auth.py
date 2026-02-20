@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Cookie, Header
 from sqlalchemy.orm import Session
 from app.core.security import decode_token
 from app.core.deps import get_db, get_current_user
@@ -54,26 +54,12 @@ async def login(data: LoginRequest, response: Response, db: Session = Depends(ge
 
     tokens = service.generate_tokens(user)
 
-    # Setear cookies httpOnly - usar samesite="none" y secure=True para cross-origin
-    response.set_cookie(
-        key="access_token",
-        value=tokens["access_token"],
-        httponly=True,
-        samesite="none",
-        secure=True,
-        max_age=900,  # 15 minutos
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=tokens["refresh_token"],
-        httponly=True,
-        samesite="none",
-        secure=True,
-        max_age=604800,  # 7 días
-    )
-
+    # Retornar tokens en el body para cross-origin (más compatible que cookies)
     return {
         "message": "Login exitoso",
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer",
         "rol": user.rol,
         "nombre": user.nombre,
         "email": user.email,
@@ -84,13 +70,21 @@ async def login(data: LoginRequest, response: Response, db: Session = Depends(ge
 async def refresh_token(
     response: Response,
     refresh_token: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
-    if not refresh_token:
+    # Obtener token del header Authorization o de cookie
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    elif refresh_token:
+        token = refresh_token
+
+    if not token:
         raise HTTPException(status_code=401, detail="No autenticado")
 
     try:
-        payload = decode_token(refresh_token)
+        payload = decode_token(token)
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Token inválido")
         user_id = payload.get("sub")
@@ -99,13 +93,16 @@ async def refresh_token(
 
     service = AuthService(db)
     user = service.get_user_by_id(user_id)
-    if not user or user.refresh_token != refresh_token:
+    if not user or user.refresh_token != token:
         raise HTTPException(status_code=401, detail="Token inválido")
 
     tokens = service.generate_tokens(user)
-    response.set_cookie(key="access_token", value=tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=900)
-    response.set_cookie(key="refresh_token", value=tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=604800)
-    return {"message": "Token renovado"}
+    return {
+        "message": "Token renovado",
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer"
+    }
 
 
 @router.post("/logout")

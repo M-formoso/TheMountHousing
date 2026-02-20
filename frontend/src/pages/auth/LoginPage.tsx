@@ -14,6 +14,7 @@ export default function LoginPage() {
 
   const loginMutation = useLogin()
   const setUser = useAuthStore((state) => state.setUser)
+  const setTokens = useAuthStore((state) => state.setTokens)
   const navigate = useNavigate()
   const { refetch: refetchMe } = useGetMe(false)
 
@@ -28,6 +29,11 @@ export default function LoginPage() {
         setRequires2FA(true)
         setUserId2FA(response.user_id)
         return
+      }
+
+      // Guardar tokens
+      if (response.access_token && response.refresh_token) {
+        setTokens(response.access_token, response.refresh_token)
       }
 
       // Login exitoso - refetchear usuario
