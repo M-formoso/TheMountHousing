@@ -54,19 +54,21 @@ async def login(data: LoginRequest, response: Response, db: Session = Depends(ge
 
     tokens = service.generate_tokens(user)
 
-    # Setear cookies httpOnly
+    # Setear cookies httpOnly - usar samesite="none" y secure=True para cross-origin
     response.set_cookie(
         key="access_token",
         value=tokens["access_token"],
         httponly=True,
-        samesite="lax",
+        samesite="none",
+        secure=True,
         max_age=900,  # 15 minutos
     )
     response.set_cookie(
         key="refresh_token",
         value=tokens["refresh_token"],
         httponly=True,
-        samesite="lax",
+        samesite="none",
+        secure=True,
         max_age=604800,  # 7 días
     )
 
@@ -101,8 +103,8 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="Token inválido")
 
     tokens = service.generate_tokens(user)
-    response.set_cookie(key="access_token", value=tokens["access_token"], httponly=True, samesite="lax", max_age=900)
-    response.set_cookie(key="refresh_token", value=tokens["refresh_token"], httponly=True, samesite="lax", max_age=604800)
+    response.set_cookie(key="access_token", value=tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=900)
+    response.set_cookie(key="refresh_token", value=tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=604800)
     return {"message": "Token renovado"}
 
 
@@ -199,7 +201,7 @@ async def verify_2fa(
     service = AuthService(db)
     tokens = service.generate_tokens(user)
 
-    response.set_cookie(key="access_token", value=tokens["access_token"], httponly=True, samesite="lax", max_age=900)
-    response.set_cookie(key="refresh_token", value=tokens["refresh_token"], httponly=True, samesite="lax", max_age=604800)
+    response.set_cookie(key="access_token", value=tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=900)
+    response.set_cookie(key="refresh_token", value=tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=604800)
 
     return {"message": "2FA verificado exitosamente", "rol": user.rol, "nombre": user.nombre}
