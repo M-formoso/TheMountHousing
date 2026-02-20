@@ -24,8 +24,27 @@ async def register(data: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login")
 async def login(data: LoginRequest, response: Response, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"Login attempt for email: {data.email}")
+
     service = AuthService(db)
+
+    # Debug: verificar si el usuario existe
+    user_check = service.get_user_by_email(data.email)
+    logger.info(f"User found: {user_check is not None}")
+
+    if user_check:
+        logger.info(f"User activo: {user_check.activo}, rol: {user_check.rol}")
+        # Verificar password manualmente para debug
+        from app.core.security import verify_password
+        pwd_ok = verify_password(data.password, user_check.hashed_password)
+        logger.info(f"Password verification: {pwd_ok}")
+
     user = service.authenticate(data.email, data.password)
+    logger.info(f"Authenticate result: {user is not None}")
+
     if not user:
         raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
 
