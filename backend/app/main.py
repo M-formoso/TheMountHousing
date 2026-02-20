@@ -75,7 +75,7 @@ async def check_admin():
         if user:
             # Probar verificación de password
             import bcrypt
-            password = "Admin123!"
+            password = "Admin12345"
             hashed = user[4]
             try:
                 is_valid = bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
