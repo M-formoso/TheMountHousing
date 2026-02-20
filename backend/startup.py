@@ -3,6 +3,17 @@
 import subprocess
 import sys
 
+def ensure_tables_exist():
+    """Crea las tablas que falten en la BD."""
+    print("Ensuring all tables exist...")
+    try:
+        from app.db.session import engine
+        from app.models import Base
+        Base.metadata.create_all(bind=engine)
+        print("Tables checked/created successfully!")
+    except Exception as e:
+        print(f"Warning creating tables: {e}")
+
 # Datos de los 20 PH
 PH_DATA = [
     {"numero": "PH 1", "m2": 100, "precio_m2": 1900, "precio_total": 190000, "estado": "disponible"},
@@ -33,48 +44,55 @@ def seed_unidades(conn):
     from sqlalchemy import text
 
     print("Seeding PH units...")
+    created_count = 0
 
-    for ph in PH_DATA:
-        # Verificar si ya existe
-        result = conn.execute(
-            text("SELECT id FROM unidades WHERE numero_unidad = :numero"),
-            {"numero": ph["numero"]}
-        )
+    try:
+        for ph in PH_DATA:
+            # Verificar si ya existe
+            result = conn.execute(
+                text("SELECT id FROM unidades WHERE numero_unidad = :numero"),
+                {"numero": ph["numero"]}
+            )
 
-        if result.fetchone() is None:
-            print(f"  Creating {ph['numero']}...")
-            conn.execute(text("""
-                INSERT INTO unidades (
-                    id, numero_unidad, nombre, metros_cuadrados, precio_por_m2,
-                    precio_total, estado, avance_porcentaje, etapa_actual,
-                    created_at, updated_at
-                )
-                VALUES (
-                    gen_random_uuid()::text,
-                    :numero_unidad,
-                    :nombre,
-                    :metros_cuadrados,
-                    :precio_por_m2,
-                    :precio_total,
-                    :estado,
-                    0,
-                    'planos',
-                    NOW(),
-                    NOW()
-                )
-            """), {
-                "numero_unidad": ph["numero"],
-                "nombre": ph.get("nombre"),
-                "metros_cuadrados": ph["m2"],
-                "precio_por_m2": ph["precio_m2"],
-                "precio_total": ph["precio_total"],
-                "estado": ph["estado"],
-            })
-        else:
-            print(f"  {ph['numero']} already exists, skipping...")
+            if result.fetchone() is None:
+                print(f"  Creating {ph['numero']}...")
+                conn.execute(text("""
+                    INSERT INTO unidades (
+                        id, numero_unidad, nombre, metros_cuadrados, precio_por_m2,
+                        precio_total, estado, avance_porcentaje, etapa_actual,
+                        created_at, updated_at
+                    )
+                    VALUES (
+                        gen_random_uuid()::text,
+                        :numero_unidad,
+                        :nombre,
+                        :metros_cuadrados,
+                        :precio_por_m2,
+                        :precio_total,
+                        :estado,
+                        0,
+                        'planos',
+                        NOW(),
+                        NOW()
+                    )
+                """), {
+                    "numero_unidad": ph["numero"],
+                    "nombre": ph.get("nombre"),
+                    "metros_cuadrados": ph["m2"],
+                    "precio_por_m2": ph["precio_m2"],
+                    "precio_total": ph["precio_total"],
+                    "estado": ph["estado"],
+                })
+                created_count += 1
+            else:
+                print(f"  {ph['numero']} already exists, skipping...")
 
-    conn.commit()
-    print("PH units seeded successfully!")
+        conn.commit()
+        print(f"PH units seeded successfully! Created {created_count} new units.")
+    except Exception as e:
+        print(f"Error seeding PH units: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def main():
@@ -86,6 +104,9 @@ def main():
     print(result.stdout)
     if result.stderr:
         print(result.stderr)
+
+    # Asegurar que todas las tablas existan
+    ensure_tables_exist()
 
     # Crear o actualizar usuario admin
     print("Setting up admin user...")

@@ -99,7 +99,39 @@ export default function ROIAnalysisPage() {
     )
   }
 
-  const data = analysis!
+  // Valores por defecto si no hay datos
+  const defaultData: ROIAnalysis = {
+    config: {
+      id: '',
+      nombre_proyecto: 'The Mount Housing',
+      costo_terreno: 0,
+      superficie_terreno: 0,
+      superficie_construible: 0,
+      total_departamentos: 20,
+      tamano_promedio_depto: 0,
+      precio_venta_m2: 0,
+      gastos_legales: 0,
+      gastos_comercializacion: 0,
+      gastos_financieros: 0,
+      imprevistos: 0,
+    },
+    costo_terreno: 0,
+    costo_construccion: 0,
+    costo_total: 0,
+    incidencia_terreno: 0,
+    evaluacion_incidencia: 'Sin datos',
+    costo_por_m2: 0,
+    ingresos_totales: 0,
+    ganancia_neta: 0,
+    roi: 0,
+    margen_ganancia: 0,
+    relacion_costo_venta: 0,
+    precio_venta_promedio: 0,
+    costo_promedio_unidad: 0,
+    ganancia_por_unidad: 0,
+  }
+
+  const data = analysis || defaultData
 
   return (
     <div className="space-y-6">
