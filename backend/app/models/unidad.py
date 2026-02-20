@@ -65,6 +65,7 @@ class Unidad(BaseModel):
     etapas = relationship("EtapaUnidad", back_populates="unidad", cascade="all, delete-orphan", order_by="EtapaUnidad.orden")
     egresos = relationship("Egreso", back_populates="unidad")
     ordenes_compra = relationship("OrdenCompra", back_populates="unidad")
+    movimientos_material = relationship("MovimientoInventario", back_populates="unidad")
 
 
 class ImagenUnidad(BaseModel):

@@ -71,6 +71,7 @@ class MovimientoInventario(BaseModel):
     tipo = Column(SAEnum(TipoMovimiento), nullable=False)
     cantidad = Column(Float, nullable=False)
     proyecto_id = Column(String(36), ForeignKey("proyectos.id"), nullable=True)
+    unidad_id = Column(String(36), ForeignKey("unidades.id"), nullable=True)  # PH asignado
     orden_compra_id = Column(String(36), ForeignKey("ordenes_compra.id"), nullable=True)
     usuario_id = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
     fecha = Column(Date, nullable=False)
@@ -80,6 +81,7 @@ class MovimientoInventario(BaseModel):
 
     # Relaciones
     material = relationship("Material", back_populates="movimientos")
+    unidad = relationship("Unidad", back_populates="movimientos_material")
 
 
 class PrecioMaterial(BaseModel):

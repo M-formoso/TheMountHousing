@@ -83,7 +83,7 @@ class MaterialService:
         if not material:
             raise ValueError("Material no encontrado")
 
-        costo_total = round(data.cantidad * data.costo_unitario, 2)
+        costo_total = data.costo_total if data.costo_total else round(data.cantidad * data.costo_unitario, 2)
 
         movimiento = MovimientoInventario(
             id=str(uuid4()),
@@ -91,6 +91,7 @@ class MaterialService:
             tipo=data.tipo,
             cantidad=data.cantidad,
             proyecto_id=data.proyecto_id,
+            unidad_id=data.unidad_id,  # PH asignado
             usuario_id=usuario_id,
             fecha=data.fecha,
             costo_unitario=data.costo_unitario,

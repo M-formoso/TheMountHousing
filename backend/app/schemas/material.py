@@ -61,12 +61,14 @@ class MaterialListResponse(BaseModel):
 
 # --- Movimientos ---
 class MovimientoCreate(BaseModel):
-    material_id: str
+    material_id: Optional[str] = None  # Se puede setear en el endpoint
     tipo: TipoMovimiento
     cantidad: float = Field(..., gt=0)
     proyecto_id: Optional[str] = None
+    unidad_id: Optional[str] = None  # PH asignado
     fecha: date
     costo_unitario: float = Field(0, ge=0)
+    costo_total: Optional[float] = None
     notas: Optional[str] = None
 
 
@@ -76,6 +78,7 @@ class MovimientoResponse(BaseModel):
     tipo: TipoMovimiento
     cantidad: float
     proyecto_id: Optional[str] = None
+    unidad_id: Optional[str] = None
     fecha: date
     costo_unitario: float
     costo_total: float

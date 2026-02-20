@@ -91,6 +91,21 @@ interface EgresoUnidad {
   notas?: string
 }
 
+interface MaterialesUnidad {
+  unidad_id: string
+  numero_unidad: string
+  total_costo_materiales: number
+  resumen: {
+    material_id: string
+    codigo: string
+    nombre: string
+    categoria: string
+    unidad_medida: string
+    cantidad_total: number
+    costo_total: number
+  }[]
+}
+
 const formatCurrency = (value?: number) => {
   if (!value) return '-'
   return new Intl.NumberFormat('en-US', {
@@ -648,6 +663,15 @@ export default function UnidadDetallePage() {
     enabled: !!id,
   })
 
+  const { data: materialesData } = useQuery<MaterialesUnidad>({
+    queryKey: ['unidad-materiales', id],
+    queryFn: async () => {
+      const res = await api.get(`/api/v1/unidades/${id}/materiales`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
   const venderMutation = useMutation({
     mutationFn: (data: { cliente_id: string; crear_usuario: boolean }) =>
       api.post(`/api/v1/unidades/${id}/vender`, data),
@@ -1037,89 +1061,139 @@ export default function UnidadDetallePage() {
             )}
           </div>
 
-          {/* Costos asignados */}
+          {/* Materiales Consumidos */}
           <div className="card p-6">
             <h2 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center gap-2">
-              <Wallet size={20} className="text-amber-600" />
-              Costos Asignados
+              <Package size={20} className="text-blue-600" />
+              Materiales Consumidos
             </h2>
-            {costos ? (
+            {materialesData && materialesData.resumen.length > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-secondary-500 flex items-center gap-2">
-                    <Package size={14} />
-                    Materiales
-                  </span>
-                  <span className="font-medium">{formatCurrency(costos.costos.materiales)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-secondary-500 flex items-center gap-2">
-                    <Hammer size={14} />
-                    Mano de Obra
-                  </span>
-                  <span className="font-medium">{formatCurrency(costos.costos.mano_obra)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-secondary-500 flex items-center gap-2">
-                    <User size={14} />
-                    Subcontratistas
-                  </span>
-                  <span className="font-medium">{formatCurrency(costos.costos.subcontratistas)}</span>
-                </div>
-                {costos.costos.otros > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-secondary-500">Otros</span>
-                    <span className="font-medium">{formatCurrency(costos.costos.otros)}</span>
+                {materialesData.resumen.map((mat) => (
+                  <div key={mat.material_id} className="text-xs p-2 bg-blue-50 rounded">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{mat.nombre}</span>
+                      <span className="text-blue-700">{formatCurrency(mat.costo_total)}</span>
+                    </div>
+                    <div className="flex justify-between text-secondary-400 mt-1">
+                      <span>{mat.codigo}</span>
+                      <span>{mat.cantidad_total} {mat.unidad_medida}</span>
+                    </div>
                   </div>
-                )}
-                {costos.costos.ordenes_compra > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-secondary-500">Órdenes de Compra</span>
-                    <span className="font-medium">{formatCurrency(costos.costos.ordenes_compra)}</span>
-                  </div>
-                )}
+                ))}
                 <div className="flex items-center justify-between pt-3 border-t font-semibold">
-                  <span className="text-secondary-700">Total Costos</span>
-                  <span className="text-amber-600">{formatCurrency(costos.costos.total)}</span>
+                  <span className="text-secondary-700">Total Materiales</span>
+                  <span className="text-blue-600">{formatCurrency(materialesData.total_costo_materiales)}</span>
                 </div>
-                {costos.margen !== null && (
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-secondary-500 flex items-center gap-2">
-                      <TrendingUp size={14} />
-                      Margen
-                    </span>
-                    <span className={`font-bold ${costos.margen >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(costos.margen)}
-                    </span>
-                  </div>
-                )}
               </div>
             ) : (
               <p className="text-secondary-400 text-center py-4 text-sm">
-                Sin costos asignados
+                Sin materiales asignados
+              </p>
+            )}
+          </div>
+
+          {/* Costos asignados (Egresos) */}
+          <div className="card p-6">
+            <h2 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center gap-2">
+              <Wallet size={20} className="text-amber-600" />
+              Otros Costos
+            </h2>
+            {costos && costos.costos.total > 0 ? (
+              <div className="space-y-3">
+                {costos.costos.mano_obra > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-secondary-500 flex items-center gap-2">
+                      <Hammer size={14} />
+                      Mano de Obra
+                    </span>
+                    <span className="font-medium">{formatCurrency(costos.costos.mano_obra)}</span>
+                  </div>
+                )}
+                {costos.costos.subcontratistas > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-secondary-500 flex items-center gap-2">
+                      <User size={14} />
+                      Subcontratistas
+                    </span>
+                    <span className="font-medium">{formatCurrency(costos.costos.subcontratistas)}</span>
+                  </div>
+                )}
+                {costos.costos.otros > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-secondary-500">Otros Gastos</span>
+                    <span className="font-medium">{formatCurrency(costos.costos.otros)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-3 border-t font-semibold">
+                  <span className="text-secondary-700">Total Otros Costos</span>
+                  <span className="text-amber-600">{formatCurrency(costos.costos.total)}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-secondary-400 text-center py-4 text-sm">
+                Sin otros costos asignados
               </p>
             )}
 
             {/* Lista de egresos */}
             {egresos.length > 0 && (
               <div className="mt-4 pt-4 border-t">
-                <h3 className="text-sm font-medium text-secondary-700 mb-2">Detalle de Gastos</h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <h3 className="text-sm font-medium text-secondary-700 mb-2">Detalle</h3>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
                   {egresos.map((egreso) => (
                     <div key={egreso.id} className="text-xs p-2 bg-secondary-50 rounded">
                       <div className="flex justify-between">
                         <span className="font-medium truncate flex-1">{egreso.concepto}</span>
                         <span className="text-secondary-700 ml-2">{formatCurrency(egreso.monto)}</span>
                       </div>
-                      <div className="flex justify-between text-secondary-400 mt-1">
-                        <span>{egreso.categoria}</span>
-                        <span>{egreso.fecha ? new Date(egreso.fecha).toLocaleDateString('es-MX') : '-'}</span>
-                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Resumen Total y Margen */}
+          <div className="card p-6 bg-gradient-to-br from-primary-50 to-primary-100">
+            <h2 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center gap-2">
+              <TrendingUp size={20} className="text-primary-600" />
+              Resumen Financiero
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-secondary-600">Materiales</span>
+                <span className="font-medium">{formatCurrency(materialesData?.total_costo_materiales || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-secondary-600">Otros Costos</span>
+                <span className="font-medium">{formatCurrency(costos?.costos.total || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-primary-200 font-semibold">
+                <span className="text-secondary-700">Costo Total</span>
+                <span className="text-amber-600">
+                  {formatCurrency((materialesData?.total_costo_materiales || 0) + (costos?.costos.total || 0))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-secondary-600">Precio de Venta</span>
+                <span className="font-medium">{formatCurrency(unidad.precio_total || 0)}</span>
+              </div>
+              {unidad.precio_total && (
+                <div className="flex items-center justify-between pt-2 border-t border-primary-200 font-bold">
+                  <span className="text-secondary-700">Margen</span>
+                  {(() => {
+                    const costoTotal = (materialesData?.total_costo_materiales || 0) + (costos?.costos.total || 0)
+                    const margen = (unidad.precio_total || 0) - costoTotal
+                    return (
+                      <span className={margen >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency(margen)}
+                      </span>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Plano */}

@@ -11,7 +11,7 @@ from app.models.usuario import Usuario, Rol
 from app.models.unidad import Unidad, ImagenUnidad, EtapaUnidad
 from app.models.cliente import Cliente
 from app.models.finanzas import Egreso, CategoriaEgreso
-from app.models.material import OrdenCompra
+from app.models.material import OrdenCompra, MovimientoInventario, Material, TipoMovimiento
 from app.schemas.unidad import (
     UnidadCreate, UnidadUpdate, UnidadResponse, UnidadDetalleResponse,
     VenderUnidadRequest, ImagenCreate, ImagenResponse,
@@ -606,3 +606,62 @@ def get_ordenes_unidad(
         }
         for o in ordenes
     ]
+
+
+@router.get("/{unidad_id}/materiales")
+def get_materiales_unidad(
+    unidad_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Obtiene el consumo de materiales de una unidad (salidas de inventario)"""
+    unidad = db.query(Unidad).filter(Unidad.id == unidad_id, Unidad.activo.is_(True)).first()
+    if not unidad:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+
+    # Obtener movimientos de salida asignados a esta unidad
+    movimientos = db.query(MovimientoInventario).filter(
+        MovimientoInventario.unidad_id == unidad_id,
+        MovimientoInventario.activo.is_(True),
+        MovimientoInventario.tipo == TipoMovimiento.SALIDA
+    ).order_by(MovimientoInventario.fecha.desc()).all()
+
+    # Agrupar por material para resumen
+    resumen_materiales = {}
+    for mov in movimientos:
+        material = db.query(Material).filter(Material.id == mov.material_id).first()
+        if material:
+            if material.id not in resumen_materiales:
+                resumen_materiales[material.id] = {
+                    "material_id": material.id,
+                    "codigo": material.codigo,
+                    "nombre": material.nombre,
+                    "categoria": material.categoria.value if material.categoria else None,
+                    "unidad_medida": material.unidad_medida.value if material.unidad_medida else None,
+                    "cantidad_total": 0,
+                    "costo_total": 0,
+                }
+            resumen_materiales[material.id]["cantidad_total"] += mov.cantidad
+            resumen_materiales[material.id]["costo_total"] += float(mov.costo_total or 0)
+
+    # Total general
+    total_costo = sum(m["costo_total"] for m in resumen_materiales.values())
+
+    return {
+        "unidad_id": unidad_id,
+        "numero_unidad": unidad.numero_unidad,
+        "total_costo_materiales": total_costo,
+        "resumen": list(resumen_materiales.values()),
+        "movimientos": [
+            {
+                "id": m.id,
+                "material_id": m.material_id,
+                "cantidad": m.cantidad,
+                "costo_unitario": float(m.costo_unitario or 0),
+                "costo_total": float(m.costo_total or 0),
+                "fecha": m.fecha.isoformat() if m.fecha else None,
+                "notas": m.notas,
+            }
+            for m in movimientos
+        ],
+    }

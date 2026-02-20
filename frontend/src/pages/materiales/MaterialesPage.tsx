@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, Package, AlertTriangle, DollarSign, Layers, Download,
-  MoreVertical, Eye, Edit2, Trash2, TrendingUp, TrendingDown, Box
+  MoreVertical, Eye, Edit2, Trash2, TrendingUp, TrendingDown, Box, Home, X, ArrowDownCircle
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useMateriales, useDeleteMaterial, useCreateMaterial, useUpdateMaterial } from '@/services/materiales.service'
@@ -14,6 +15,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/utils'
 import type { Material, MaterialCreate, CategoriaMaterial, UnidadMedida } from '@/types/material'
 import { categoriaLabels, categoriaColors, unidadLabels } from '@/types/material'
+import api from '@/lib/axios'
+
+interface Unidad {
+  id: string
+  numero_unidad: string
+  nombre?: string
+}
 
 export default function MaterialesPage() {
   const [buscar, setBuscar] = useState('')
@@ -21,6 +29,8 @@ export default function MaterialesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [showSalidaModal, setShowSalidaModal] = useState(false)
+  const [materialParaSalida, setMaterialParaSalida] = useState<Material | null>(null)
 
   const { data, isLoading, refetch } = useMateriales({
     buscar: buscar || undefined,
@@ -28,6 +38,15 @@ export default function MaterialesPage() {
     limit: 500,
   })
   const deleteMutation = useDeleteMaterial()
+
+  // Obtener lista de unidades para el selector
+  const { data: unidades = [] } = useQuery<Unidad[]>({
+    queryKey: ['unidades-list'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/unidades')
+      return res.data
+    },
+  })
 
   const materiales = data?.items ?? []
 
@@ -63,6 +82,12 @@ export default function MaterialesPage() {
   const handleEdit = (material: Material) => {
     setEditingMaterial(material)
     setShowForm(true)
+    setMenuOpen(null)
+  }
+
+  const handleSalida = (material: Material) => {
+    setMaterialParaSalida(material)
+    setShowSalidaModal(true)
     setMenuOpen(null)
   }
 
@@ -194,7 +219,16 @@ export default function MaterialesPage() {
             <MoreVertical size={16} className="text-secondary-500" />
           </button>
           {menuOpen === row.original.id && (
-            <div className="absolute right-0 top-8 bg-white border border-secondary-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+            <div className="absolute right-0 top-8 bg-white border border-secondary-200 rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleSalida(row.original)
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 text-blue-600 flex items-center gap-2"
+              >
+                <ArrowDownCircle size={14} /> Registrar Salida
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -391,6 +425,19 @@ export default function MaterialesPage() {
         <div
           className="fixed inset-0 z-0"
           onClick={() => setMenuOpen(null)}
+        />
+      )}
+
+      {/* Modal Salida de Material */}
+      {showSalidaModal && materialParaSalida && (
+        <SalidaMaterialModal
+          material={materialParaSalida}
+          unidades={unidades}
+          onClose={() => {
+            setShowSalidaModal(false)
+            setMaterialParaSalida(null)
+            refetch()
+          }}
         />
       )}
     </div>
@@ -639,6 +686,205 @@ function MaterialFormModal({
                 ? 'Guardando...'
                 : isEditing ? 'Guardar Cambios' : 'Agregar Material'
               }
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Modal para registrar salida de material
+function SalidaMaterialModal({
+  material,
+  unidades,
+  onClose,
+}: {
+  material: Material
+  unidades: Unidad[]
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState({
+    cantidad: 0,
+    unidad_id: '',
+    notas: '',
+    fecha: new Date().toISOString().split('T')[0],
+  })
+  const [error, setError] = useState('')
+
+  const salidaMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      return api.post(`/api/v1/materiales/${material.id}/movimientos`, {
+        tipo: 'salida',
+        cantidad: data.cantidad,
+        unidad_id: data.unidad_id || null,
+        fecha: data.fecha,
+        costo_unitario: material.precio_unitario_actual,
+        costo_total: data.cantidad * Number(material.precio_unitario_actual),
+        notas: data.notas || null,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['materiales'] })
+      queryClient.invalidateQueries({ queryKey: ['unidad-materiales'] })
+      onClose()
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.detail || 'Error al registrar salida')
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (form.cantidad <= 0) {
+      setError('La cantidad debe ser mayor a 0')
+      return
+    }
+
+    if (form.cantidad > material.stock_actual) {
+      setError(`Stock insuficiente. Disponible: ${material.stock_actual} ${unidadLabels[material.unidad_medida]}`)
+      return
+    }
+
+    if (!form.unidad_id) {
+      setError('Debes seleccionar un PH al cual asignar el material')
+      return
+    }
+
+    salidaMutation.mutate(form)
+  }
+
+  const costoTotal = form.cantidad * Number(material.precio_unitario_actual)
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-secondary-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <ArrowDownCircle size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-secondary-900">Registrar Salida</h2>
+              <p className="text-sm text-secondary-500">{material.nombre}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-secondary-100 rounded-lg">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
+          )}
+
+          {/* Info del material */}
+          <div className="bg-secondary-50 rounded-lg p-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-secondary-500">Stock disponible:</span>
+              <span className="font-semibold">{material.stock_actual} {unidadLabels[material.unidad_medida]}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span className="text-secondary-500">Precio unitario:</span>
+              <span className="font-semibold">{formatCurrency(Number(material.precio_unitario_actual))}</span>
+            </div>
+          </div>
+
+          {/* PH Destino - OBLIGATORIO */}
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <span className="flex items-center gap-1">
+                <Home size={14} />
+                Asignar a PH *
+              </span>
+            </label>
+            <select
+              value={form.unidad_id}
+              onChange={(e) => setForm(p => ({ ...p, unidad_id: e.target.value }))}
+              className="input-field w-full"
+              required
+            >
+              <option value="">Selecciona un PH...</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.numero_unidad} {u.nombre ? `- ${u.nombre}` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-secondary-400 mt-1">
+              El material se descontará del inventario y se asignará a este PH
+            </p>
+          </div>
+
+          {/* Cantidad */}
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              Cantidad a sacar *
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                step="0.01"
+                value={form.cantidad || ''}
+                onChange={(e) => setForm(p => ({ ...p, cantidad: parseFloat(e.target.value) || 0 }))}
+                className="input-field flex-1"
+                placeholder="0"
+                min={0}
+                max={material.stock_actual}
+                required
+              />
+              <span className="text-secondary-500 text-sm">{unidadLabels[material.unidad_medida]}</span>
+            </div>
+          </div>
+
+          {/* Fecha */}
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              Fecha
+            </label>
+            <input
+              type="date"
+              value={form.fecha}
+              onChange={(e) => setForm(p => ({ ...p, fecha: e.target.value }))}
+              className="input-field w-full"
+            />
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              Notas (opcional)
+            </label>
+            <textarea
+              value={form.notas}
+              onChange={(e) => setForm(p => ({ ...p, notas: e.target.value }))}
+              className="input-field w-full"
+              rows={2}
+              placeholder="Observaciones sobre el uso del material..."
+            />
+          </div>
+
+          {/* Costo total */}
+          {form.cantidad > 0 && (
+            <div className="bg-blue-50 rounded-lg p-3">
+              <div className="flex justify-between">
+                <span className="text-blue-700">Costo total:</span>
+                <span className="font-bold text-blue-700">{formatCurrency(costoTotal)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={salidaMutation.isPending} className="flex-1">
+              {salidaMutation.isPending ? 'Registrando...' : 'Registrar Salida'}
             </Button>
           </div>
         </form>
