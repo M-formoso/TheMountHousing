@@ -55,6 +55,23 @@ async def generic_exception_handler(request: Request, exc: Exception):
 async def health():
     return {"status": "ok", "app": settings.APP_NAME}
 
+# Test endpoint
+@app.get("/test")
+async def test():
+    return {"message": "API funcionando correctamente"}
+
+# Test DB connection
+@app.get("/test-db")
+async def test_db():
+    try:
+        from app.db.session import SessionLocal
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        return {"db": "connected"}
+    except Exception as e:
+        return {"db": "error", "detail": str(e)}
+
 
 # Crear tablas al iniciar (solo desarrollo; en producción usar alembic)
 @app.on_event("startup")
