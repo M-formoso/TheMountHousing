@@ -1,3 +1,5 @@
+import logging
+import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,6 +7,10 @@ from app.api.v1.api import api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Importar todos los modelos para que SQLAlchemy los registre
 from app.models import usuario, cliente, proyecto, empleado  # noqa: F401
@@ -20,6 +26,7 @@ app = FastAPI(
 )
 
 # CORS - configurado desde variables de entorno para Railway
+logger.info(f"CORS Origins: {settings.get_cors_origins()}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),
@@ -35,9 +42,11 @@ app.include_router(api_router)
 # --- Manejo de errores global ---
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Error in {request.url.path}: {exc}")
+    logger.error(traceback.format_exc())
     return JSONResponse(
         status_code=500,
-        content={"detail": "Error interno del servidor", "status_code": 500},
+        content={"detail": f"Error interno: {str(exc)}", "status_code": 500},
     )
 
 
