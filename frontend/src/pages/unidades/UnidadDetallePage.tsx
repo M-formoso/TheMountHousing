@@ -723,7 +723,14 @@ export default function UnidadDetallePage() {
 
   const deleteImagenMutation = useMutation({
     mutationFn: (imagenId: string) => api.delete(`/api/v1/unidades/${id}/imagenes/${imagenId}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['unidad', id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unidad', id] })
+      alert('Imagen eliminada correctamente')
+    },
+    onError: (error: any) => {
+      console.error('Error eliminando imagen:', error)
+      alert('Error al eliminar: ' + (error.response?.data?.detail || error.message))
+    },
   })
 
   if (isLoading) {
