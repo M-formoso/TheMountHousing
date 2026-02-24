@@ -725,7 +725,6 @@ export default function UnidadDetallePage() {
     mutationFn: (imagenId: string) => api.delete(`/api/v1/unidades/${id}/imagenes/${imagenId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['unidad', id] })
-      alert('Imagen eliminada correctamente')
     },
     onError: (error: any) => {
       console.error('Error eliminando imagen:', error)

@@ -78,6 +78,10 @@ def get_unidad(
     if current_user.rol == Rol.CLIENTE.value and unidad.usuario_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permiso para ver esta unidad")
 
+    # Filtrar solo imágenes y etapas activas
+    unidad.imagenes = [img for img in unidad.imagenes if img.activo]
+    unidad.etapas = [etapa for etapa in unidad.etapas if etapa.activo]
+
     return unidad
 
 
@@ -231,6 +235,10 @@ def vender_unidad(
         joinedload(Unidad.imagenes),
         joinedload(Unidad.etapas),
     ).filter(Unidad.id == unidad_id).first()
+
+    # Filtrar solo imágenes y etapas activas
+    unidad.imagenes = [img for img in unidad.imagenes if img.activo]
+    unidad.etapas = [etapa for etapa in unidad.etapas if etapa.activo]
 
     return unidad
 
