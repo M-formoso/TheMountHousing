@@ -628,6 +628,8 @@ export default function UnidadDetallePage() {
   const [viewingImagen, setViewingImagen] = useState<Imagen | null>(null)
   const [tipoImagenFilter, setTipoImagenFilter] = useState<string>('todos')
   const [expandedEtapa, setExpandedEtapa] = useState<string | null>(null)
+  const [uploadingRender, setUploadingRender] = useState(false)
+  const renderInputRef = useRef<HTMLInputElement>(null)
 
   const { data: unidad, isLoading } = useQuery<UnidadDetalle>({
     queryKey: ['unidad', id],
@@ -732,6 +734,46 @@ export default function UnidadDetallePage() {
     },
   })
 
+  const updateUnidadMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/api/v1/unidades/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unidad', id] })
+    },
+  })
+
+  const handleRenderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es muy grande. Máximo 10MB')
+      return
+    }
+
+    setUploadingRender(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'renders')
+
+      const uploadRes = await api.post('/api/v1/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      await updateUnidadMutation.mutateAsync({ render_url: uploadRes.data.data.url })
+    } catch (error: any) {
+      alert('Error al subir: ' + (error.response?.data?.detail || error.message))
+    } finally {
+      setUploadingRender(false)
+      if (renderInputRef.current) renderInputRef.current.value = ''
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -780,14 +822,61 @@ export default function UnidadDetallePage() {
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
           {/* Render / Imagen principal */}
-          <div className="card overflow-hidden">
+          <div className="card overflow-hidden relative group">
+            <input
+              ref={renderInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleRenderUpload}
+              className="hidden"
+            />
             <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center">
               {unidad.render_url ? (
-                <img src={unidad.render_url} alt={unidad.numero_unidad} className="w-full h-full object-cover" />
+                <>
+                  <img src={unidad.render_url} alt={unidad.numero_unidad} className="w-full h-full object-cover" />
+                  {/* Overlay con botones */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => renderInputRef.current?.click()}
+                      disabled={uploadingRender}
+                    >
+                      {uploadingRender ? (
+                        <Loader2 className="animate-spin mr-1" size={16} />
+                      ) : (
+                        <Camera size={16} className="mr-1" />
+                      )}
+                      Cambiar Render
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/90"
+                      onClick={() => window.open(unidad.render_url, '_blank')}
+                    >
+                      <Eye size={16} className="mr-1" />
+                      Ver Completa
+                    </Button>
+                  </div>
+                </>
               ) : (
-                <div className="text-center">
-                  <Building2 className="mx-auto text-primary-300 mb-2" size={64} />
-                  <p className="text-primary-400">Sin render</p>
+                <div
+                  className="text-center cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => renderInputRef.current?.click()}
+                >
+                  {uploadingRender ? (
+                    <>
+                      <Loader2 className="mx-auto text-primary-500 mb-2 animate-spin" size={64} />
+                      <p className="text-primary-500">Subiendo render...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto text-primary-300 mb-2" size={64} />
+                      <p className="text-primary-400 font-medium">Clic para subir render</p>
+                      <p className="text-primary-300 text-sm mt-1">JPG, PNG o WebP • Máx 10MB</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
