@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
+import re
 
 from app.core.deps import get_db, get_current_user
 from app.core.security import get_password_hash
@@ -17,6 +18,7 @@ from app.schemas.unidad import (
     VenderUnidadRequest, ImagenCreate, ImagenResponse,
     EtapaCreate, EtapaUpdate, EtapaResponse,
 )
+from app.services.cloudinary_service import delete_image
 
 router = APIRouter(prefix="/unidades", tags=["unidades"])
 
@@ -382,13 +384,13 @@ def add_imagen(
 
 
 @router.delete("/{unidad_id}/imagenes/{imagen_id}")
-def delete_imagen(
+async def delete_imagen(
     unidad_id: str,
     imagen_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Elimina una imagen"""
+    """Elimina una imagen de la unidad y de Cloudinary"""
     if current_user.rol not in [Rol.SUPER_ADMIN.value, Rol.ADMINISTRADOR.value]:
         raise HTTPException(status_code=403, detail="No tienes permiso")
 
@@ -400,6 +402,16 @@ def delete_imagen(
     if not imagen:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
 
+    # Eliminar de Cloudinary si la URL es de Cloudinary
+    if imagen.url and "cloudinary.com" in imagen.url:
+        # Extraer public_id de la URL de Cloudinary
+        # Formato típico: https://res.cloudinary.com/cloud_name/image/upload/v123/folder/filename.ext
+        match = re.search(r'/upload/(?:v\d+/)?(.+?)(?:\.[^.]+)?$', imagen.url)
+        if match:
+            public_id = match.group(1)
+            await delete_image(public_id)
+
+    # Soft delete en la base de datos
     imagen.activo = False
     db.commit()
     return {"message": "Imagen eliminada"}
